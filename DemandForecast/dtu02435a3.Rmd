@@ -1,0 +1,241 @@
+---
+title: "DTU02435A3: Prediction and Decision Making in Airline Company"
+output: html_notebook
+author: Edward J. Xu
+version: 1.0
+date: April 27th, 2019
+---
+
+```{r, include=FALSE}
+# Clear variables
+rm(list=ls())
+library(knitr)
+```
+
+```{r}
+library(forecast)
+library(cluster)
+source("ArimaxMultipleInput_EDXU.R")
+```
+
+# Time Series Analysis of Number of Passengers
+
+```{r}
+## Data for dtu31761a3d
+frameData <- function(){
+    dat <- read.csv("Data/passengers.csv", header = T)
+    num_obs <- length(dat[,1])
+    seq_12 <- seq(12)
+    vec_month <- rep(0, num_obs)
+    vec_year <- rep(0, num_obs)
+    for (i in 1: (num_obs / 12)){
+        vec_month[(12 * i - 11): (12 * i)] <- seq_12
+        vec_year[(12 * i - 11): (12 * i)] <- rep(i, 12)
+    }
+    dat.f <- data.frame("series" = seq(1, num_obs), "year" = vec_year, "month" = vec_month, "pass" = dat[,1])
+    return(dat.f)
+}
+dat.f <- frameData()
+rm(frameData)
+num_obs <- length(dat.f$series)
+```
+
+## Box-Plot by Month and Year
+
+```{r, fig.height = 6, fig.width = 11}
+par(bty="n")
+plot(factor(dat.f$month), dat.f$pass, xlab = "Month", ylab = "1000 Passengers",
+     main = "Box Plot of Passengers By Month")
+```
+
+```{r, fig.height = 6, fig.width = 11}
+plot(factor(dat.f$year), dat.f$pass, xlab = "Year", ylab = "1000 Passengers", bty = "n",
+     main = "Box Plot of Passengers By Year")
+```
+
+```{r}
+vec_ave_year <- rep(0, 11)
+vec_pass.ave <- rep(0, 132)
+for (i in 1: 11){
+    vec_ave_year[i] <- sum(dat.f$pass[dat.f$year == i]) / 12
+    vec_pass.ave[dat.f$year == i] <-  dat.f$pass[dat.f$year == i] - vec_ave_year[i]
+}
+# dat.f["pass.ave"] <- vec_pass.ave
+```
+
+## Transform the Data
+
+```{r, fig.height = 6, fig.width = 11}
+dat.f["pass.log"] <- log(dat.f$pass)
+par(mfrow = c(2, 1), mgp = c(2, 0.7, 0), mar = c(1, 1, 1, 1), oma = c(2, 2, 4, 2), cex.lab = 0.8, cex.axis = 0.8)
+plot(dat.f$series, dat.f$pass, type = "l", col = "blue", bty = "n", xaxt = "n", lwd = 2)
+axis(1, at = seq(0, 132, by = 12), labels = seq(1, 12))
+title(main = "Original Data and Log-Transormed Data of Passengers Num", cex.main = 1.2, line = 1, outer = TRUE)
+plot(dat.f$series, dat.f$pass.log, type = "l", col = "blue", bty = "n", xaxt = "n", lwd = 2)
+axis(1, at = seq(0, 132, by = 12), labels = seq(1, 12))
+```
+
+```{r, eval=FALSE, include=FALSE}
+setEPS()
+postscript("images/1.eps", width = 11, height = 6)
+par(mfrow = c(2, 1), mgp = c(2, 0.7, 0), mar = c(1, 1, 1, 1), oma = c(2, 2, 4, 2), cex.lab = 0.8, cex.axis = 0.8)
+plot(dat.f$series, dat.f$pass, type = "l", col = "blue", bty = "n", xaxt = "n", lwd = 2)
+axis(1, at = seq(0, 132, by = 12), labels = seq(1, 12))
+title(main = "Original Data and Log-Transormed Data of Passengers Num", cex.main = 1.2, line = 1, outer = TRUE)
+plot(dat.f$series, dat.f$pass.log, type = "l", col = "blue", bty = "n", xaxt = "n", lwd = 2)
+axis(1, at = seq(0, 132, by = 12), labels = seq(1, 12))
+dev.off()
+```
+
+```{r, fig.height = 6, fig.width = 11}
+plotTimeSeries(dat.f$pass.log, num_lag = 24, str_name = "Passengers Num")
+```
+
+```{r, eval=FALSE, include=FALSE}
+mod_1 <- arima(dat.f$pass.log, order = c(0, 1, 0))
+setEPS()
+postscript("images/6.eps", width = 11, height = 12)
+plotTimeSeriesResidual(mod_1$residual, num_lag = 24, str_name = "ARIMA(0,1,0) Model for Num of Passengers")
+dev.off()
+```
+
+# Task 1: Fit ARIMA Model to the Data
+
+Use auto.arima to fit the model
+
+```{r, fig.height = 12, fig.width = 11}
+# ts_pass.log <- ts(dat.f$pass.log, frequency = 12)
+# mod_auto <- auto.arima(ts_pass.log)
+# plotTimeSeriesResidual(mod_auto$residuals, num_lag = 24)
+```
+
+```{r, eval=FALSE, include=FALSE}
+mod_2 <- arima(dat.f$pass.log, order = c(0, 1, 1), seasonal = list(order = c(0, 0, 1), period = 12))
+setEPS()
+postscript("images/7.eps", width = 11, height = 12)
+plotTimeSeriesResidual(mod_2$residual, num_lag = 24, str_name = "ARIMA(0,1,1)(0,0,1)12 Model for Num of Passengers")
+dev.off()
+```
+
+```{r, fig.height = 12, fig.width = 11}
+mod_3 <- arima(dat.f$pass.log, order = c(0, 1, 1), seasonal = list(order = c(0, 1, 1), period = 12))
+plotTimeSeriesResidual(mod_3$residual, num_lag = 24, str_name = "ARIMA Model for Num of Passengers")
+```
+
+```{r, eval=FALSE, include=FALSE}
+setEPS()
+postscript("images/2.eps", width = 11, height = 12)
+plotTimeSeriesResidual(mod_1$residual, num_lag = 24, str_name = "ARIMA Model for Num of Passengers")
+dev.off()
+```
+
+## Task 2: Scenario Generation and Reduction
+
+```{r, fig.height = 6, fig.width = 11}
+num_step <- 12 # predict the next 12 months
+list_pred <- predict(mod_1, n.ahead = 12, newxreg = NULL)
+vec_pred.exp <- exp(list_pred$pred)
+list_intervalPred <- calIntervalPred(num_obs = length(dat.f$pass), num_para = length(mod_1$coef), 
+                                    y.hat = list_pred$pred, se = list_pred$se)
+mat_intervalPred <- matrix(0, nrow = 2, ncol = 12)
+mat_intervalPred[1,] <- list_intervalPred$boundUp
+mat_intervalPred[2,] <- list_intervalPred$boundLow
+mat_intervalPred.exp <- exp(mat_intervalPred)
+plotPredWithoutTest(dat.f$pass, vec_pred = vec_pred.exp, mat_intervalPred = mat_intervalPred.exp, 
+    str = "Passengers Num Next Year")
+```
+
+```{r, eval=FALSE, include=FALSE}
+setEPS()
+postscript("images/3.eps", width = 11, height = 6)
+plotPredWithoutTest(dat.f$pass, vec_pred = vec_pred.exp, mat_intervalPred = mat_intervalPred.exp, 
+    str = "Passengers Num Next Year")
+dev.off()
+```
+
+### 2.1,  Scenario Generation
+
+```{r, fig.height = 6, fig.width = 11}
+num_scena <- 1000 # initial number of scenarios
+num_scena.red <- 10 # Reduce number of scenarios
+# Data structure to store the scenarios
+mat_scena <- matrix(NA, nrow = num_scena, ncol = num_step)
+# Loop over scenarios and simulate with the arima model a prediction for the next 24 hours
+for (w in 1:num_scena) {
+  mat_scena[w,]  <- simulate(mod_1, nsim = num_step, future = TRUE, seed = w)
+}
+mat_scena.exp <- exp(mat_scena)
+plot(dat.f$pass, type = 'l', col='red', lwd = 1, bty="n", cex = , xlab = 'Time (months)', 
+     ylab = 'Number of Passengers (Thousand)', ylim = c(min(dat.f$pass), max(mat_scena.exp)),
+     xlim = c(0, num_obs + 12), main = 'Scenario Generation for Passengers Num Next Year')
+for (w in 1: num_scena) {
+    lines(seq((num_obs + 1), (num_obs + 12)), mat_scena.exp[w, ], col = 'grey', lwd = 0.5)
+}
+legend('topleft', inset = .02, legend = c('Observations', 'Scenarios'),
+       col = c('red', 'grey'), lwd = c(1, 0.5), lty = c(1, 1))
+```
+
+```{r, eval=FALSE, include=FALSE}
+setEPS()
+postscript("images/4.eps", width = 11, height = 6)
+plot(dat.f$pass, type = 'l', col='red', lwd = 1, bty="n", cex = , xlab = 'Time (months)', 
+     ylab = 'Number of Passengers (Thousand)', ylim = c(min(dat.f$pass), max(mat_scena.exp)),
+     xlim = c(0, num_obs + 12), main = 'Scenario Generation for Passengers Num Next Year')
+for (w in 1: num_scena) {
+    lines(seq((num_obs + 1), (num_obs + 12)), mat_scena.exp[w, ], col = 'grey', lwd = 0.5)
+}
+legend('topleft', inset = .02, legend = c('Observations', 'Scenarios'),
+       col = c('red', 'grey'), lwd = c(1, 0.5), lty = c(1, 1))
+dev.off()
+```
+
+### 2.2,  Scenario Reduction
+
+```{r, fig.height = 6, fig.width = 11}
+mod_pam <- pam(mat_scena.exp, num_scena.red)
+mat_scena.exp.red <- mod_pam$medoids
+plot(dat.f$pass, type = 'l', col='red', lwd = 1, bty="n", cex = , xlab = 'Time (months)', 
+     ylab = 'Number of Passengers (Thousand)', ylim = c(min(dat.f$pass), max(mat_scena.exp)),
+     xlim = c(0, num_obs + 12), main = 'Scenario Reduction for Passengers Num Next Year')
+for(w in 1: num_scena.red){
+    lines(seq((num_obs + 1), (num_obs + 12)), mat_scena.exp.red[w,], col = 'grey', lwd = 0.5)
+}
+legend('topleft', inset = .02, legend = c('Observations', 'Scenarios'),
+       col = c('red', 'grey'), lwd = c(1, 0.5), lty = c(1, 1))
+```
+
+```{r, eval=FALSE, include=FALSE}
+setEPS()
+postscript("images/5.eps", width = 11, height = 6)
+plot(dat.f$pass, type = 'l', col='red', lwd = 1, bty="n", cex = , xlab = 'Time (months)', 
+     ylab = 'Number of Passengers (Thousand)', ylim = c(min(dat.f$pass), max(mat_scena.exp)),
+     xlim = c(0, num_obs + 12), main = 'Scenario Reduction for Passengers Num Next Year')
+for(w in 1: num_scena.red){
+    lines(seq((num_obs + 1), (num_obs + 12)), mat_scena.exp.red[w,], col = 'grey', lwd = 0.5)
+}
+legend('topleft', inset = .02, legend = c('Observations', 'Scenarios'),
+       col = c('red', 'grey'), lwd = c(1, 0.5), lty = c(1, 1))
+dev.off()
+```
+
+## Calculate the Probabilities of Reduced Scenatrios
+
+```{r}
+vec_prob.red <- rep(0, 12) 
+for (i in 1: num_scena.red) {
+  vec_prob.red[i] <- (1 / num_scena) * sum(mod_pam$clustering == i, na.rm = TRUE)
+}
+sum(vec_prob.red) > 1 - 10^6  # Check if the sum of prob is 1
+```
+
+Export the result
+
+```{r, eval=FALSE, include=FALSE}
+write.table(vec_prob.red, file = 'Result/Probability.csv', sep = ",",  dec = ".", row.names = F, 
+            col.names = F, quote = FALSE)
+write.table(t(mat_scena.exp.red), file = 'Result/Scenario.csv', sep = ",",  dec = ".", row.names = F, 
+            col.names = seq(10), quote = FALSE)
+write.table(vec_pred.exp, file = "Result/ExpectedValue.csv", sep = ",",  dec = ".", row.names = F, 
+            col.names = F, quote = FALSE)
+```
+

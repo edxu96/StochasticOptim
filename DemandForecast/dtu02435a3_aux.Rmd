@@ -1,0 +1,100 @@
+---
+title: "DTU02435A3: Auxiliary"
+output: html_notebook
+author: Edward J. Xu
+version: 1.0
+date: May 5th, 2019
+---
+
+```{r, include=FALSE}
+# Clear variables
+rm(list=ls())
+library(knitr)
+```
+
+# 1,  Label the Data of Operation Costs
+
+```{r, eval=FALSE, include=FALSE}
+manipulateData <- function(){
+    dat <- read.csv("Data/OperationCosts.csv", header = FALSE)
+    #
+    vec_i <- rep(0, length(dat[,1]))
+    for (x in 1: 4){
+        vec_i[dat[,1] == paste("i", x, sep = "")] <- x
+    }
+    dat[,1] <- vec_i
+    #
+    vec_j <- rep(0, length(dat[,1]))
+    for (x in 1: 10){
+        vec_j[dat[,2] == paste("j", x, sep = "")] <- x
+    }
+    dat[,2] <- vec_j
+    #
+    vec_p <- rep(0, length(dat[,3]))
+    for (i in 1: 10){
+        vec_p[dat[,3] == paste("p", i, sep = "")] <- i
+    }
+    dat[,3] <- vec_p
+    #
+    write.table(dat, file = 'Result/OperationCosts.csv', sep = ",",  dec = ".", row.names = F, 
+                col.names = c("i", "j", "p", "cost"), quote = FALSE)
+}
+manipulateData()
+rm(manipulateData)
+```
+
+```{r, fig.height = 6, fig.width = 11, warning=FALSE}
+readData <- function(str_file){
+    mat_obj <- matrix(0, nrow = 12, ncol = 500)
+    dat <- read.csv(str_file, header = FALSE)
+    for (i in 1:12) {
+        mat_obj[i,] <- as.numeric(dat[i,])
+    }
+    return(mat_obj)
+}
+vec_obj_1 <- readData("Data/out-of-sample_1.csv")
+vec_obj_2 <- readData("Data/out-of-sample_2.csv")
+vec_obj_3 <- readData("Data/out-of-sample_3.csv")
+plotHistDensity <- function(vec_data_1, vec_data_2, vec_data_3){
+    # Function to Plot the Histogram and Density Function
+    list_density_1 <- density(vec_data_1, adjust = 0.5)
+    list_density_2 <- density(vec_data_2, adjust = 0.5)
+    list_density_3 <- density(vec_data_3, adjust = 0.5)
+    # list_hist <- hist(mat_data, breaks = 50, plot = FALSE)
+    plot(list_density_1$x, list_density_1$y, type = "l", col = "blue", lwd = 2, xlab = "obj", ylab = "Density", 
+        main = NULL, bty = "n", lty = 2,
+        # xlim = c(min(vec_data_1, vec_data_2, vec_data_3), max(vec_data_1, vec_data_2, vec_data_3)), 
+        xlim = c(1.1e7, 1.15e7),
+        ylim = c(min(list_density_1$y, list_density_2$y, list_density_3$y), 
+        max(list_density_1$y, list_density_2$y, list_density_3$y)))
+    lines(list_density_2$x, list_density_2$y, col = "red", lwd = 2, lty = 3)
+    lines(list_density_3$x, list_density_3$y, col = "green", lwd = 2, lty = 1)
+    title(main = paste("Histogram of Result from Out-of-Sample Test of Different Models"))  # cex.main = 0.8
+    legend('topleft', inset = .02, legend = c('Deterministic', 'Stochastic', 'Robust'),
+        col = c('blue', 'red', 'green'), lwd = c(2, 2, 2), lty = c(2, 3, 1))
+}
+plotHistDensity(vec_obj_1[1,], vec_obj_2[1,], vec_obj_3[1,])
+```
+
+```{r}
+vec_obj_1 <- rep(0, 12 * 500)
+vec_obj_2 <- rep(0, 12 * 500)
+vec_obj_3 <- rep(0, 12 * 500)
+for (i in 1:500) {
+    for (j in 1:12) {
+        vec_obj_1[(12 * (i - 1) + j)] <- mat_obj_1[j, i]
+        vec_obj_2[(12 * (i - 1) + j)] <- mat_obj_2[j, i]
+        vec_obj_3[(12 * (i - 1) + j)] <- mat_obj_3[j, i]
+    }
+}
+```
+
+
+```{r, eval=FALSE, include=FALSE}
+setEPS()
+postscript("images/8.eps", width = 11, height = 6)
+plotHistDensity(vec_obj_1[1,], vec_obj_2[1,], vec_obj_3[1,])
+dev.off()
+```
+
+
